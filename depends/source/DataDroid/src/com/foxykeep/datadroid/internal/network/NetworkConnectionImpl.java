@@ -18,12 +18,6 @@ import android.content.Context;
 import android.support.util.Base64;
 import android.text.TextUtils;
 import android.util.Log;
-import java.security.cert.CertificateException; 
-import javax.net.ssl.X509TrustManager;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
-import java.security.KeyStore;
-
 
 import org.apache.http.HttpStatus;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -40,7 +34,6 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
-import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -48,10 +41,7 @@ import java.util.zip.GZIPInputStream;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 /**
  * Implementation of the network connection.
@@ -81,24 +71,24 @@ public final class NetworkConnectionImpl {
      * result.
      *
      * @param context The context to use for this operation. Used to generate the user agent if
-     *            needed.
+     * needed.
      * @param urlValue The webservice URL.
      * @param method The request method to use.
      * @param parameterList The parameters to add to the request.
      * @param headerMap The headers to add to the request.
      * @param isGzipEnabled Whether the request will use gzip compression if available on the
-     *            server.
+     * server.
      * @param userAgent The user agent to set in the request. If null, a default Android one will be
-     *            created.
+     * created.
      * @param postText The POSTDATA text to add in the request.
      * @param credentials The credentials to use for authentication.
      * @param isSslValidationEnabled Whether the request will validate the SSL certificates.
      * @return The result of the webservice call.
      */
     public static ConnectionResult execute(Context context, String urlValue, Method method,
-            ArrayList<BasicNameValuePair> parameterList, HashMap<String, String> headerMap,
-            boolean isGzipEnabled, String userAgent, String postText,
-            UsernamePasswordCredentials credentials, boolean isSslValidationEnabled) throws
+                                            ArrayList<BasicNameValuePair> parameterList, HashMap<String, String> headerMap,
+                                            boolean isGzipEnabled, String userAgent, String postText,
+                                            UsernamePasswordCredentials credentials, boolean isSslValidationEnabled) throws
             ConnectionException {
         HttpURLConnection connection = null;
         try {
@@ -216,211 +206,4 @@ public final class NetworkConnectionImpl {
             }
 
             // Set the connection and read timeout
-            connection.setConnectTimeout(OPERATION_TIMEOUT);
-            connection.setReadTimeout(OPERATION_TIMEOUT);
-
-            // Set the outputStream content for POST and PUT requests
-            if ((method == Method.POST || method == Method.PUT) && outputText != null) {
-                OutputStream output = null;
-                try {
-                    output = connection.getOutputStream();
-                    output.write(outputText.getBytes());
-                } finally {
-                    if (output != null) {
-                        try {
-                            output.close();
-                        } catch (IOException e) {
-                            // Already catching the first IOException so nothing to do here.
-                        }
-                    }
-                }
-            }
-
-            String contentEncoding = connection.getHeaderField(HTTP.CONTENT_ENCODING);
-
-            int responseCode = connection.getResponseCode();
-            boolean isGzip = contentEncoding != null
-                    && contentEncoding.equalsIgnoreCase("gzip");
-            DataDroidLog.d(TAG, "Response code: " + responseCode);
-
-            if (responseCode == HttpStatus.SC_MOVED_PERMANENTLY) {
-                String redirectionUrl = connection.getHeaderField(LOCATION_HEADER);
-                throw new ConnectionException("New location : " + redirectionUrl,
-                        redirectionUrl);
-            }
-
-            InputStream errorStream = connection.getErrorStream();
-            if (errorStream != null) {
-                String error = convertStreamToString(errorStream,  isGzip);
-                throw new ConnectionException(error, responseCode);
-            }
-
-            String body = convertStreamToString(connection.getInputStream(),
-                    isGzip);
-
-            if (DataDroidLog.canLog(Log.VERBOSE)) {
-                DataDroidLog.v(TAG, "Response body: ");
-
-                int pos = 0;
-                int bodyLength = body.length();
-                while (pos < bodyLength) {
-                    DataDroidLog.v(TAG, body.substring(pos, Math.min(bodyLength - 1, pos + 200)));
-                    pos = pos + 200;
-                }
-            }
-
-            return new ConnectionResult(connection.getHeaderFields(), body);
-        } catch (IOException e) {
-            DataDroidLog.e(TAG, "IOException", e);
-            throw new ConnectionException(e);
-        } catch (KeyManagementException e) {
-            DataDroidLog.e(TAG, "KeyManagementException", e);
-            throw new ConnectionException(e);
-        } catch (NoSuchAlgorithmException e) {
-            DataDroidLog.e(TAG, "NoSuchAlgorithmException", e);
-            throw new ConnectionException(e);
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
-    }
-
-    private static String createAuthenticationHeader(UsernamePasswordCredentials credentials) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(credentials.getUserName()).append(":").append(credentials.getPassword());
-        return "Basic " + Base64.encodeToString(sb.toString().getBytes(), Base64.NO_WRAP);
-    }
-
-    private static SSLSocketFactory sAllHostsValidSocketFactory;
-
-   static X509TrustManager x509Tm = null;
-   static {
-       try {
-           TrustManagerFactory tmf = TrustManagerFactory
-              .getInstance(TrustManagerFactory.getDefaultAlgorithm());
-              // Using null here initialises the TMF with the default trust store.
-           tmf.init((KeyStore) null);
-
-           // Get hold of the default trust manager
-           for (TrustManager tm : tmf.getTrustManagers()) {
-               if (tm instanceof X509TrustManager) {
-                   x509Tm = (X509TrustManager) tm;
-                   Log.d(TAG, "found default X509TrustManager: " + tm);
-                   break;
-               }
-           }
-       } catch (Exception e) {
-       }
-    }
-
-
-    private static SSLSocketFactory getAllHostsValidSocketFactory()
-            throws NoSuchAlgorithmException, KeyManagementException {
-        if (sAllHostsValidSocketFactory == null) {
-            TrustManager[] trustAllCerts = new TrustManager[] {
-                new X509TrustManager() {
-                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                        if (x509Tm != null) {
-                             return x509Tm.getAcceptedIssuers();
-                        } else {
-                             System.out.println("missing default X509TrustManager");
-                             return new java.security.cert.X509Certificate[0];
-                        }
-
-                    }
-
-                    public void checkClientTrusted(X509Certificate[] certs, String authType) throws CertificateException {
-
-                        if (x509Tm != null)
-                             x509Tm.checkClientTrusted(certs, authType);
-                        else
-                             System.out.println("missing default X509TrustManager");
-
-
-                    }
-
-                    public void checkServerTrusted(X509Certificate[] certs, String authType) throws CertificateException {
-
-                        if ((certs != null) && (certs.length == 1)) {
-                            certs[0].checkValidity();
-                        } else {
-
-                            if (x509Tm != null) { 
-
-                                try {
-                                    x509Tm.checkServerTrusted(certs, authType);
-                                } catch (CertificateException ce) {
-                                    if (localTrustManager != null) {
-                                         localTrustManager.checkServerTrusted(certs, authType);
-                                    } else {
-                                         throw ce;
-                                    }
-
-                                }
-
-
-                            } else { 
-                               System.out.println("missing default X509TrustManager");
-                               throw new CertificateException("missing default X509TrustManager");
-
-
-                        }
-    
-                    }
-                }
-            }};
-
-            SSLContext sc = SSLContext.getInstance("TLS"); // Or "TLSv1.2"
-            sc.init(null, trustAllCerts, new java.security.SecureRandom());
-            sAllHostsValidSocketFactory = sc.getSocketFactory();
-        }
-
-        return sAllHostsValidSocketFactory;
-    }
-
-    private static X509TrustManager localTrustManager = null;
-
-    public static void installExternalTrustManager(final X509TrustManager ltm) { 
-        localTrustManager = ltm;
-    }
-
-    private static HostnameVerifier sAllHostsValidVerifier;
-
-    private static HostnameVerifier getAllHostsValidVerifier() {
-        if (sAllHostsValidVerifier == null) {
-    sAllHostsValidVerifier = HttpsURLConnection.getDefaultHostnameVerifier();
-        }
-        return sAllHostsValidVerifier;
-    }
-
-    private static String convertStreamToString(InputStream is, boolean isGzipEnabled)
-            throws IOException {
-        InputStream cleanedIs = is;
-        if (isGzipEnabled) {
-            cleanedIs = new GZIPInputStream(is);
-        }
-
-        BufferedReader reader = null;
-        try {
-            reader = new BufferedReader(new InputStreamReader(cleanedIs, UTF8_CHARSET));
-            StringBuilder sb = new StringBuilder();
-            for (String line; (line = reader.readLine()) != null;) {
-                sb.append(line);
-                sb.append("\n");
-            }
-
-            return sb.toString();
-        } finally {
-            if (reader != null) {
-                reader.close();
-            }
-
-            cleanedIs.close();
-
-            if (isGzipEnabled) {
-                is.close();
-            }
-        }
-    }
-}
+            connection.set
