@@ -389,13 +389,8 @@ public final class NetworkConnectionImpl {
 
     private static HostnameVerifier getAllHostsValidVerifier() {
         if (sAllHostsValidVerifier == null) {
-            sAllHostsValidVerifier = new HostnameVerifier() {
-                public boolean verify(String hostname, SSLSession session) {
-                    return true;
-                }
-            };
+    sAllHostsValidVerifier = HttpsURLConnection.getDefaultHostnameVerifier();
         }
-
         return sAllHostsValidVerifier;
     }
 
