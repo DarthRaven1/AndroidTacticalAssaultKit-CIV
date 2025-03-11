@@ -6069,6 +6069,8 @@ def ProcessConfigOverrides(filename):
       continue
 
     try:
+      if '../' in cfg_file or '..\\'  in cfg_file:
+        raise Exception('Invalid file path')
       with open(cfg_file) as file_handle:
         for line in file_handle:
           line, _, _ = line.partition('#')  # Remove comments.
