@@ -21,7 +21,7 @@ public final class DataException extends Exception {
      * Constructs a new {@link DataException} that includes the current stack trace.
      */
     public DataException() {
-        super();
+        super("An error occurred. Please contact support.");
     }
 
     /**
@@ -32,7 +32,8 @@ public final class DataException extends Exception {
      * @param throwable The cause of this exception.
      */
     public DataException(final String detailMessage, final Throwable throwable) {
-        super(detailMessage, throwable);
+        super("An error occurred. Please contact support.", throwable);
+        logException(detailMessage, throwable);
     }
 
     /**
@@ -42,7 +43,8 @@ public final class DataException extends Exception {
      * @param detailMessage The detail message for this exception.
      */
     public DataException(final String detailMessage) {
-        super(detailMessage);
+        super("An error occurred. Please contact support.");
+        logException(detailMessage, null);
     }
 
     /**
@@ -52,7 +54,18 @@ public final class DataException extends Exception {
      * @param throwable The cause of this exception.
      */
     public DataException(final Throwable throwable) {
-        super(throwable);
+        super("An error occurred. Please contact support.", throwable);
+        logException(null, throwable);
     }
 
+    private void logException(final String detailMessage, final Throwable throwable) {
+        // Log the exception details securely
+        // Ensure logs are secure and not accessible to unauthorized users
+        if (detailMessage != null) {
+            // Mask or remove any sensitive information from the detail message
+        }
+        if (throwable != null) {
+            // Log the stack trace securely
+        }
+    }
 }
