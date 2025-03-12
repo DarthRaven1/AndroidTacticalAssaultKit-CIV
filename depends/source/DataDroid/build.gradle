@@ -50,3 +50,7 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 }
+
+dependencies {
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
+}
