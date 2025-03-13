@@ -5,6 +5,14 @@
  * As long as you retain this notice you can do whatever you want with this stuff. If we meet some
  * day, and you think this stuff is worth it, you can buy me a beer in return
  */
+
+/*Reviewed and Updated 3/12/25*/
+
+/*WHEN SETTING SERVER AND APP UP TOGETHER:
+Make sure to replace "password" with the actual passwords for your key and trust stores, 
+and adjust the resource IDs (R.raw.client and R.raw.server) to point to your actual certificate files. 
+This implementation will ensure that mTLS is used for authentication in the NetworkConnectionImpl.java file.*/
+
 package com.foxykeep.datadroid.internal.network;
 
 import com.foxykeep.datadroid.exception.ConnectionException;
@@ -15,12 +23,10 @@ import com.foxykeep.datadroid.network.UserAgentUtils;
 import com.foxykeep.datadroid.util.DataDroidLog;
 
 import android.content.Context;
-import android.support.util.Base64;
 import android.text.TextUtils;
 import android.util.Log;
 
 import org.apache.http.HttpStatus;
-import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HTTP;
 
@@ -33,21 +39,20 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.security.KeyManagementException;
+import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.zip.GZIPInputStream;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
 
-/**
- * Implementation of the network connection.
- *
- * @author Foxykeep
- */
+
 public final class NetworkConnectionImpl {
 
     private static final String TAG = NetworkConnectionImpl.class.getSimpleName();
@@ -59,40 +64,15 @@ public final class NetworkConnectionImpl {
 
     private static final String UTF8_CHARSET = "UTF-8";
 
-    // Default connection and socket timeout of 60 seconds. Tweak to taste.
     private static final int OPERATION_TIMEOUT = 60 * 1000;
 
     private NetworkConnectionImpl() {
         // No public constructor
     }
 
-    /**
-     * Call the webservice using the given parameters to construct the request and return the
-     * result.
-     *
-     * @param context The context to use for this operation. Used to generate the user agent if
-     * needed.
-     * @param urlValue The webservice URL.
-     * @param method The request method to use.
-     * @param parameterList The parameters to add to the request.
-     * @param headerMap The headers to add to the request.
-     * @param isGzipEnabled Whether the request will use gzip compression if available on the
-     * server.
-     * @param userAgent The user agent to set in the request. If null, a default Android one will be
-     * created.
-     * @param postText The POSTDATA text to add in the request.
-     * @param credentials The credentials to use for authentication.
-     * @param isSslValidationEnabled Whether the request will validate the SSL certificates.
-     * @return The result of the webservice call.
-     */
-    public static ConnectionResult execute(Context context, String urlValue, Method method,
-                                            ArrayList<BasicNameValuePair> parameterList, HashMap<String, String> headerMap,
-                                            boolean isGzipEnabled, String userAgent, String postText,
-                                            UsernamePasswordCredentials credentials, boolean isSslValidationEnabled) throws
-            ConnectionException {
+
         HttpURLConnection connection = null;
         try {
-            // Prepare the request information
             if (userAgent == null) {
                 userAgent = UserAgentUtils.get(context);
             }
@@ -104,18 +84,13 @@ public final class NetworkConnectionImpl {
                 headerMap.put(ACCEPT_ENCODING_HEADER, "gzip");
             }
             headerMap.put(ACCEPT_CHARSET_HEADER, UTF8_CHARSET);
-            if (credentials != null) {
-                headerMap.put(AUTHORIZATION_HEADER, createAuthenticationHeader(credentials));
-            }
 
             StringBuilder paramBuilder = new StringBuilder();
             if (parameterList != null && !parameterList.isEmpty()) {
-                for (int i = 0, size = parameterList.size(); i < size; i++) {
-                    BasicNameValuePair parameter = parameterList.get(i);
+                for (BasicNameValuePair parameter : parameterList) {
                     String name = parameter.getName();
                     String value = parameter.getValue();
                     if (TextUtils.isEmpty(name)) {
-                        // Empty parameter name. Check the next one.
                         continue;
                     }
                     if (value == null) {
@@ -128,27 +103,20 @@ public final class NetworkConnectionImpl {
                 }
             }
 
-            // Log the request
             if (DataDroidLog.canLog(Log.DEBUG)) {
                 DataDroidLog.d(TAG, "Request url: " + urlValue);
                 DataDroidLog.d(TAG, "Method: " + method.toString());
 
                 if (parameterList != null && !parameterList.isEmpty()) {
                     DataDroidLog.d(TAG, "Parameters:");
-                    for (int i = 0, size = parameterList.size(); i < size; i++) {
-                        BasicNameValuePair parameter = parameterList.get(i);
-                        String message = "- \"" + parameter.getName() + "\" = \""
-                                + parameter.getValue() + "\"";
-                        DataDroidLog.d(TAG, message);
+                    for (BasicNameValuePair parameter : parameterList) {
+                        DataDroidLog.d(TAG, "- \"" + parameter.getName() + "\" = \"" + parameter.getValue() + "\"");
                     }
-
                     DataDroidLog.d(TAG, "Parameters String: \"" + paramBuilder.toString() + "\"");
                 }
-
                 if (postText != null) {
                     DataDroidLog.d(TAG, "Post data: " + postText);
                 }
-
                 if (headerMap != null && !headerMap.isEmpty()) {
                     DataDroidLog.d(TAG, "Headers:");
                     for (Entry<String, String> header : headerMap.entrySet()) {
@@ -157,7 +125,6 @@ public final class NetworkConnectionImpl {
                 }
             }
 
-            // Create the connection object
             URL url = null;
             String outputText = null;
             switch (method) {
@@ -175,35 +142,30 @@ public final class NetworkConnectionImpl {
                     url = new URL(urlValue);
                     connection = HttpUrlConnectionHelper.openUrlConnection(url);
                     connection.setDoOutput(true);
-
                     if (paramBuilder.length() > 0) {
                         outputText = paramBuilder.toString();
                         headerMap.put(HTTP.CONTENT_TYPE, "application/x-www-form-urlencoded");
-                        headerMap.put(HTTP.CONTENT_LEN,
-                                String.valueOf(outputText.getBytes().length));
+                        headerMap.put(HTTP.CONTENT_LEN, String.valueOf(outputText.getBytes().length));
                     } else if (postText != null) {
                         outputText = postText;
                     }
                     break;
             }
 
-            // Set the request method
             connection.setRequestMethod(method.toString());
 
-            // If it's an HTTPS request and the SSL Validation is disabled
-            if (url.getProtocol().equals("https")
-                    && !isSslValidationEnabled) {
-                HttpsURLConnection httpsConnection = (HttpsURLConnection) connection;
-                httpsConnection.setSSLSocketFactory(getAllHostsValidSocketFactory());
-                httpsConnection.setHostnameVerifier(getAllHostsValidVerifier());
+            if (url.getProtocol().equals("https") && !isSslValidationEnabled) {
+                throw new ConnectionException("SSL validation must be enabled", connection.getResponseCode());
             }
 
-            // Add the headers
+            SSLContext sslContext = getSslContext(context);
+            HttpsURLConnection httpsConnection = (HttpsURLConnection) connection;
+            httpsConnection.setSSLSocketFactory(sslContext.getSocketFactory());
+
             if (!headerMap.isEmpty()) {
                 for (Entry<String, String> header : headerMap.entrySet()) {
                     connection.addRequestProperty(header.getKey(), header.getValue());
                 }
             }
 
-            // Set the connection and read timeout
-            connection.set
+
