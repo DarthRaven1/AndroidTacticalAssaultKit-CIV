@@ -1,4 +1,4 @@
-
+//Reviewed and Updated on 3/13/25
 package com.atakmap.android.dropdown;
 
 import android.app.AlertDialog;
@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter; // Add IntentFilter for explicit intents
 import com.atakmap.android.ipc.AtakBroadcast.DocumentedIntentFilter;
 
 import com.atakmap.android.dropdown.DropDown.OnStateListener;
@@ -47,8 +48,7 @@ public class DropDownManager extends BroadcastReceiver {
     public static final String SHOW_DROPDOWN_DIVIDER = "com.android.atak.SHOW_DROPDOWN_DIVIDER";
     public static final String HIDE_DROPDOWN_DIVIDER = "com.android.atak.HIDE_DROPDOWN_DIVIDER";
 
-    protected DropDownManager() {
-    }
+    protected DropDownManager() { }
 
     synchronized public static DropDownManager getInstance() {
         if (_instance == null) {
@@ -98,7 +98,6 @@ public class DropDownManager extends BroadcastReceiver {
     }
 
     synchronized public void dispose() {
-
         rightSideStack.clear();
         rightSide = null;
         leftSide = null;
@@ -493,169 +492,4 @@ public class DropDownManager extends BroadcastReceiver {
                 if (rightSide.getBackStackCount() < 1) {
                     closeLeftDropDown();
                     rightSide._closeDropDown();
-                    if (rightSideStack.size() > 0) {
-                        Log.d(TAG, "found retained drop down on the stack: "
-                                + rightSide);
-                        rightSide = null;
-                        showDropDown(rightSideStack.remove(0));
-                    } else {
-                        sendShowToolbarHandleIntent();
-                        rightSide = null;
-                        Log.d(TAG,
-                                "no retained drop down found, close the left side");
-                        if (sidePane != null)
-                            sidePane.close();
-                    }
-                }
-            }
-        }
-    }
-
-    private boolean isSpecialCase(final DropDown dd) {
-        if (rightSide == null) {
-            Log.d(TAG, "right side is empty");
-            return false;
-        } else if (rightSide.getDropDown().ignoreBackButton()
-                && dd.isSwitchable()) {
-            Log.d(TAG, "right side in use and the new drop down is switchable");
-            if (rightSide.getDropDown()
-                    .getWidthFraction() > DropDownReceiver.HALF_WIDTH
-                    && rightSide.getDropDown()
-                            .getHeightFraction() > DropDownReceiver.HALF_HEIGHT) {
-                Log.d(TAG,
-                        "not enough room to use the new drop down on the left");
-            } else
-                return true;
-        }
-        Log.d(TAG, "right side in use and the new drop down is not switchable");
-
-        return false;
-    }
-
-    /**
-     * Resize the current sidepane.
-     * 
-     * @param ddr dropdown to get dimensions from.
-     */
-    void resize(final DropDownReceiver ddr) {
-        if (!compareDimensions(ddr.getDropDown())) {
-            openPane(ddr);
-        }
-    }
-
-    /**
-     * PUBLIC ACCESS TO THESE WILL BE REMOVED IN THE NEXT RELEASE.
-     * THERE ARE MANY WORDS THAT CAN BE USED TO DESCRIBE MY STATE RIGHT NOW.
-     */
-    public void hidePane() {
-        if (sidePane != null && sidePane.isOpen())
-            sidePane.hide();
-    }
-
-    /**
-     * PUBLIC ACCESS TO THESE WILL BE REMOVED IN THE NEXT RELEASE.
-     * THERE ARE MANY WORDS THAT CAN BE USED TO DESCRIBE MY STATE RIGHT NOW.
-     */
-    public void unHidePane() {
-        if (sidePane != null && !sidePane.isOpen()) {
-            if (rightSide != null) {
-                sidePane.open();
-            } else {
-                Log.d(TAG,
-                        "a call has been made by some code incorrectly trying to open a sidepane that will not be filled",
-                        new Exception());
-            }
-
-        }
-    }
-
-    /**
-     * Send intent to show the toolbar handle.
-     */
-    void sendShowToolbarHandleIntent() {
-        Intent show = new Intent(
-                "com.atakmap.android.maps.toolbar.SHOW_TOOLBAR_HANDLE");
-        AtakBroadcast.getInstance().sendBroadcast(show);
-    }
-
-    /**
-     * Send intent to hide the toolbar handle.
-     */
-    void sendHideToolbarHandleIntent() {
-        Intent hide = new Intent(
-                "com.atakmap.android.maps.toolbar.HIDE_TOOLBAR_HANDLE");
-        AtakBroadcast.getInstance().sendBroadcast(hide);
-    }
-
-    private void openPane(final DropDownReceiver ddr) {
-
-        if (sidePane == null)
-            sidePane = new SidePane(ddr.getMapView());
-
-        if (ddr == null)
-            return;
-
-        final DropDown dd = ddr.getDropDown();
-
-        if (sidePane != null && dd != null) {
-            // XXX:   this was severely insane that the sidePane had absolutely no
-            // idea about the dropdown it was associated with prior to the creation
-            // of this method.
-            sidePane.setDropDown(dd);
-            sidePane.open();
-        }
-
-        // hide the tool bar
-        if (dd != null
-                &&
-                Double.compare(dd.getWidthFraction(),
-                        DropDownReceiver.FULL_WIDTH) == 0
-                &&
-                Double.compare(dd.getHeightFraction(),
-                        DropDownReceiver.FULL_HEIGHT) == 0) {
-            sendHideToolbarHandleIntent();
-        } else {
-            sendShowToolbarHandleIntent();
-        }
-    }
-
-    /**
-     * Add a drop-down state listener for a given association key
-     * @param assocKey Association key
-     * @param listener Drop-down state listener
-     */
-    public void addStateListener(@NonNull String assocKey,
-            OnStateListener listener) {
-        ConcurrentLinkedQueue<OnStateListener> listeners = keyListeners
-                .get(assocKey);
-        if (listeners == null)
-            keyListeners.put(assocKey,
-                    listeners = new ConcurrentLinkedQueue<>());
-        listeners.add(listener);
-    }
-
-    /**
-     * Remove a drop-down state listener for a given association key
-     * @param assocKey Association key
-     * @param listener Drop-down state listener
-     */
-    public void removeStateListener(@NonNull String assocKey,
-            OnStateListener listener) {
-        ConcurrentLinkedQueue<OnStateListener> listeners = keyListeners
-                .get(assocKey);
-        if (listeners != null)
-            listeners.remove(listener);
-    }
-
-    /**
-     * Get external state listeners for a given association key
-     * @param associationKey Drop-down association key
-     * @return State listeners
-     */
-    List<OnStateListener> getListeners(@NonNull String associationKey) {
-        ConcurrentLinkedQueue<OnStateListener> listeners = keyListeners
-                .get(associationKey);
-        return listeners != null ? new ArrayList<>(listeners)
-                : new ArrayList<>();
-    }
-}
+                    if (rightSideStack.size() > 
