@@ -478,4 +478,15 @@ public class ChatDatabase {
                 l.add(value);
             }
         }
-       
+        String[] vRet = new String[l.size()];
+        l.toArray(vRet);
+        return new Pair<>(kRet.toString(), vRet);
+    }
+
+    private class HierarchyParser {
+
+        private final Contacts _cts;
+        private final Contact _userGroups;
+        private final String _selfUID;
+        private final String _senderUID;
+        private final Contact _
