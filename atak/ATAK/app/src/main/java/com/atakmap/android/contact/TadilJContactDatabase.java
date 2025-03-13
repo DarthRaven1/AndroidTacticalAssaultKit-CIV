@@ -1,4 +1,4 @@
-
+//Reviewed and Updated on 3/13/25
 package com.atakmap.android.contact;
 
 import android.content.ContentValues;
@@ -153,22 +153,15 @@ public class TadilJContactDatabase extends SQLiteOpenHelper {
         ContentValues contactValues = new ContentValues();
         contactValues.put(CONTACT_UID_COL_NAME, contact.getUID());
         contactValues.put(CONTACT_NAME_COL_NAME, contact.getName());
-        contactValues
-                .put(ENABLED_COL_NAME, String.valueOf(contact.isEnabled()));
+        contactValues.put(ENABLED_COL_NAME, String.valueOf(contact.isEnabled()));
 
-        final Connector ipConnector = contact
-                .getConnector(IpConnector.CONNECTOR_TYPE);
-
+        final Connector ipConnector = contact.getConnector(IpConnector.CONNECTOR_TYPE);
         if (ipConnector != null)
-            contactValues.put(POINT_CONN_INFO_COL_NAME, ipConnector
-                    .getConnectionString());
+            contactValues.put(POINT_CONN_INFO_COL_NAME, ipConnector.getConnectionString());
 
-        final Connector tjConnector = contact
-                .getConnector(TadilJChatConnector.CONNECTOR_TYPE);
-
+        final Connector tjConnector = contact.getConnector(TadilJChatConnector.CONNECTOR_TYPE);
         if (tjConnector != null)
-            contactValues.put(CHAT_CONN_INFO_COL_NAME, tjConnector
-                    .getConnectionString());
+            contactValues.put(CHAT_CONN_INFO_COL_NAME, tjConnector.getConnectionString());
 
         // Add to DB
         long id = getId(contact.getUID());
@@ -176,19 +169,14 @@ public class TadilJContactDatabase extends SQLiteOpenHelper {
         try {
             db = getWritableDatabase();
             if (id == -1)
-                id = AndroidDatabaseAdapter.insert(db, TABLE_CONTACTS, null,
-                        contactValues);
+                id = AndroidDatabaseAdapter.insert(db, TABLE_CONTACTS, null, contactValues);
             else
-                AndroidDatabaseAdapter.update(db, TABLE_CONTACTS, contactValues,
-                        "id=" + id, null);
+                AndroidDatabaseAdapter.update(db, TABLE_CONTACTS, contactValues, "id=?", new String[]{String.valueOf(id)});
             if (id != -1)
                 result = true;
         } catch (SQLiteException e) {
-            Toast.makeText(MapView.getMapView().getContext(),
-                    "TADIL-J DB broke",
-                    Toast.LENGTH_LONG).show();
-            Log.e(TAG, "Experienced an issue with the SQL Query.  " +
-                    "Clear your DB file if this continues");
+            Toast.makeText(MapView.getMapView().getContext(), "TADIL-J DB broke", Toast.LENGTH_LONG).show();
+            Log.e(TAG, "Experienced an issue with the SQL Query.  Clear your DB file if this continues");
             Log.e(TAG, "error occurred", e);
         } finally {
             if (db != null)
@@ -203,17 +191,11 @@ public class TadilJContactDatabase extends SQLiteOpenHelper {
         CursorIface cursor = null;
         try {
             db = this.getReadableDatabase();
-            cursor = db.query(
-                    "SELECT " + ID_COL_NAME + " FROM " + TABLE_CONTACTS
-                            + " WHERE "
-                            + CONTACT_UID_COL_NAME + "=\""
-                            + uid + "\"",
-                    null);
+            cursor = db.query("SELECT " + ID_COL_NAME + " FROM " + TABLE_CONTACTS + " WHERE " + CONTACT_UID_COL_NAME + "=?", new String[]{uid});
             if (cursor.moveToNext())
                 ret = cursor.getLong(0);
         } catch (SQLiteException e) {
-            Log.e(TAG, "Experienced an issue with the SQL Query.  " +
-                    "Clear your DB file if this continues");
+            Log.e(TAG, "Experienced an issue with the SQL Query.  Clear your DB file if this continues");
             Log.e(TAG, "error occurred", e);
         } finally {
             if (cursor != null)
@@ -235,9 +217,16 @@ public class TadilJContactDatabase extends SQLiteOpenHelper {
         DatabaseIface db = null;
         try {
             db = this.getWritableDatabase();
-            db.execute("DELETE FROM " + TABLE_CONTACTS + " WHERE " +
-                    CONTACT_UID_COL_NAME + "=\"" + uid + "\"", null);
-            result = true;
+            StatementIface stmt = null;
+            try {
+                stmt = db.compileStatement("DELETE FROM " + TABLE_CONTACTS + " WHERE " + CONTACT_UID_COL_NAME + "=?");
+                stmt.bind(1, uid);
+                stmt.execute();
+                result = true;
+            } finally {
+                if (stmt != null)
+                    stmt.close();
+            }
         } catch (SQLiteException e) {
             Log.e(TAG, "Failed to delete invalid Contact.");
             Log.e(TAG, "error occurred", e);
@@ -274,8 +263,7 @@ public class TadilJContactDatabase extends SQLiteOpenHelper {
                 } while (cursor.moveToNext());
             }
         } catch (SQLiteException e) {
-            Log.e(TAG, "Experienced an issue with the SQL Query.  " +
-                    "Clear your DB file if this continues");
+            Log.e(TAG, "Experienced an issue with the SQL Query.  Clear your DB file if this continues");
             Log.e(TAG, "error occurred", e);
         } finally {
             if (cursor != null) {
@@ -300,9 +288,7 @@ public class TadilJContactDatabase extends SQLiteOpenHelper {
         CursorIface cursor = null;
         try {
             db = this.getReadableDatabase();
-            cursor = db.query("SELECT * FROM " + TABLE_CONTACTS
-                    + " WHERE " +
-                    CONTACT_UID_COL_NAME + "=\"" + uid + "\"", null);
+            cursor = db.query("SELECT * FROM " + TABLE_CONTACTS + " WHERE " + CONTACT_UID_COL_NAME + "=?", new String[]{uid});
             if (cursor.moveToNext()) {
                 result = new TadilJContact(cursor.getString(2),
                         cursor.getString(1),
