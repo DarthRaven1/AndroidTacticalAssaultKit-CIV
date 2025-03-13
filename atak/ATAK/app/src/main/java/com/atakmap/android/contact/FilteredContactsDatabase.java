@@ -1,4 +1,4 @@
-
+//Reviewed and Updated on 3/13/25
 package com.atakmap.android.contact;
 
 import android.database.sqlite.SQLiteException;
@@ -264,10 +264,16 @@ final class FilteredContactsDatabase {
         DatabaseIface db;
         try {
             db = filteredContactsDb;
-            db.execute("DELETE FROM " + TABLE_FILTEREDCONTACTS + " WHERE "
-                    + COLUMN_ID + "=\""
-                    + uidString + "\"", null);
-            removed = true;
+            StatementIface stmt = null;
+            try {
+                stmt = db.compileStatement("DELETE FROM " + TABLE_FILTEREDCONTACTS + " WHERE " + COLUMN_ID + "=?");
+                stmt.bind(1, uidString);
+                stmt.execute();
+                removed = true;
+            } finally {
+                if (stmt != null)
+                    stmt.close();
+            }
         } catch (SQLiteException e) {
             Log.e(TAG, "Failed to delete invalid chat message", e);
             removed = false;
@@ -300,6 +306,9 @@ final class FilteredContactsDatabase {
             writer.flush();
         } finally {
             IoUtils.close(writer, TAG, "failed to close the writer");
+        }
+    }
+}
         }
     }
 }
