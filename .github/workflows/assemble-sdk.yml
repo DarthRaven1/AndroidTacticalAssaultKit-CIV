@@ -46,8 +46,8 @@ jobs:
         echo "ANDROID_SDK_TOOLS=4333796" >> $GITHUB_ENV
         echo "NDK_VERSION=12b" >> $GITHUB_ENV
         echo "KEYSTORE_ALIAS=CI" >> $GITHUB_ENV
-        echo "KEYSTORE_STORE_PASSWORD=$(< /dev/urandom tr -dc 'A-Za-z0-9' | head -c16 ; echo)" >> $GITHUB_ENV
-        echo "KEYSTORE_KEY_PASSWORD=$(< /dev/urandom tr -dc 'A-Za-z0-9' | head -c16 ; echo)" >> $GITHUB_ENV
+        echo "KEYSTORE_STORE_PASSWORD=${{ secrets.KEYSTORE_STORE_PASSWORD }}" >> $GITHUB_ENV
+        echo "KEYSTORE_KEY_PASSWORD=${{ secrets.KEYSTORE_KEY_PASSWORD }}" >> $GITHUB_ENV
         mkdir $HOME/secrets
     - name: set up Android SDK
       run: |
