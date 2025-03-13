@@ -2,6 +2,7 @@ name: Assemble ATAK
 
 on:
   pull_request:
+
 jobs:
   assemble:
     name: Build
@@ -26,7 +27,6 @@ jobs:
     - name: set environment
       run: |
         apt -y install ant
-        apt -y install apg
         apt -y install dos2unix
         apt -y install autoconf
         apt -y install automake
@@ -46,36 +46,36 @@ jobs:
         echo "ANDROID_SDK_TOOLS=4333796" >> $GITHUB_ENV
         echo "NDK_VERSION=12b" >> $GITHUB_ENV
         echo "KEYSTORE_ALIAS=CI" >> $GITHUB_ENV
-        echo "KEYSTORE_STORE_PASSWORD=$(apg -a 1 -n 1 -m 16 -x 16 -E '\')" >> $GITHUB_ENV
-        echo "KEYSTORE_KEY_PASSWORD=$(apg -a 1 -n 1 -m 16 -x 16 -E '\')" >> $GITHUB_ENV
+        echo "KEYSTORE_STORE_PASSWORD=$(< /dev/urandom tr -dc 'A-Za-z0-9' | head -c16 ; echo)" >> $GITHUB_ENV
+        echo "KEYSTORE_KEY_PASSWORD=$(< /dev/urandom tr -dc 'A-Za-z0-9' | head -c16 ; echo)" >> $GITHUB_ENV
         mkdir $HOME/secrets
     - name: set up Android SDK
       run: |
-       wget --quiet --tries=0 --output-document=android-sdk.zip https://dl.google.com/android/repository/sdk-tools-linux-${ANDROID_SDK_TOOLS}.zip;
-       unzip -qq -d android-sdk-linux android-sdk.zip;
-       mkdir -p ~/.android;
-       touch ~/.android/repositories.cfg;
-       echo y | android-sdk-linux/tools/bin/sdkmanager "platforms;android-${ANDROID_COMPILE_SDK}" >/dev/null;
-       echo y | android-sdk-linux/tools/bin/sdkmanager "platform-tools" >/dev/null;
-       echo y | android-sdk-linux/tools/bin/sdkmanager "build-tools;${ANDROID_BUILD_TOOLS}" >/dev/null;
-       echo "ANDROID_HOME=$PWD/android-sdk-linux" >> $GITHUB_ENV
-       echo "$PWD/android-sdk-linux/platform-tools/" >> $GITHUB_PATH
-       set +o pipefail
-       yes | android-sdk-linux/tools/bin/sdkmanager --licenses
-       set -o pipefail
+        wget --quiet --tries=0 --output-document=android-sdk.zip https://dl.google.com/android/repository/sdk-tools-linux-${ANDROID_SDK_TOOLS}.zip;
+        unzip -qq -d android-sdk-linux android-sdk.zip;
+        mkdir -p ~/.android;
+        touch ~/.android/repositories.cfg;
+        echo y | android-sdk-linux/tools/bin/sdkmanager "platforms;android-${ANDROID_COMPILE_SDK}" >/dev/null;
+        echo y | android-sdk-linux/tools/bin/sdkmanager "platform-tools" >/dev/null;
+        echo y | android-sdk-linux/tools/bin/sdkmanager "build-tools;${ANDROID_BUILD_TOOLS}" >/dev/null;
+        echo "ANDROID_HOME=$PWD/android-sdk-linux" >> $GITHUB_ENV
+        echo "$PWD/android-sdk-linux/platform-tools/" >> $GITHUB_PATH
+        set +o pipefail
+        yes | android-sdk-linux/tools/bin/sdkmanager --licenses
+        set -o pipefail
     - name: set up Android NDK
       run: |
-       wget --quiet --tries=0 --output-document=android-ndk.zip https://dl.google.com/android/repository/android-ndk-r${NDK_VERSION}-linux-x86_64.zip;
-       unzip -qq  android-ndk.zip;
-       echo "ANDROID_NDK_HOME=$PWD/android-ndk-r${NDK_VERSION}" >> $GITHUB_ENV
-       echo "ANDROID_NDK=$PWD/android-ndk-r${NDK_VERSION}" >> $GITHUB_ENV
+        wget --quiet --tries=0 --output-document=android-ndk.zip https://dl.google.com/android/repository/android-ndk-r${NDK_VERSION}-linux-x86_64.zip;
+        unzip -qq  android-ndk.zip;
+        echo "ANDROID_NDK_HOME=$PWD/android-ndk-r${NDK_VERSION}" >> $GITHUB_ENV
+        echo "ANDROID_NDK=$PWD/android-ndk-r${NDK_VERSION}" >> $GITHUB_ENV
     - name: set up CMake
       run: |
-       wget --quiet --tries=0 --output-document=cmake-3.14.7.tar.gz https://cmake.org/files/v3.14/cmake-3.14.7-Linux-x86_64.tar.gz;
-       gzip -d cmake-3.14.7.tar.gz;
-       tar xf cmake-3.14.7.tar;
-       rm -rf cmake-3.14.7.tar;
-       echo "CMAKE_HOME=$PWD/cmake-3.14.7-Linux-x86_64" >> $GITHUB_ENV
+        wget --quiet --tries=0 --output-document=cmake-3.14.7.tar.gz https://cmake.org/files/v3.14/cmake-3.14.7-Linux-x86_64.tar.gz;
+        gzip -d cmake-3.14.7.tar.gz;
+        tar xf cmake-3.14.7.tar;
+        rm -rf cmake-3.14.7.tar;
+        echo "CMAKE_HOME=$PWD/cmake-3.14.7-Linux-x86_64" >> $GITHUB_ENV
     - name: Build Dependencies
       run: |
         git submodule update --init --recursive
@@ -94,7 +94,7 @@ jobs:
         done
     - name: Create Keystore
       run: |
-        echo y | $JAVA_HOME/bin/keytool -genkeypair -dname "cn=ATAK CIV, ou=, o=, c=US" -alias $KEYSTORE_ALIAS -keypass $KEYSTORE_KEY_PASSWORD -keystore $HOME/secrets/android_keystore -storepass $[...]
+        echo y | $JAVA_HOME/bin/keytool -genkeypair -dname "cn=ATAK CIV, ou=, o=, c=US" -alias $KEYSTORE_ALIAS -keypass $KEYSTORE_KEY_PASSWORD -keystore $HOME/secrets/android_keystore -storepass $KEYSTORE_STORE_PASSWORD
         cd atak
         rm -rf local.properties
         echo "takDebugKeyFile=$HOME/secrets/android_keystore" >> local.properties
@@ -129,7 +129,7 @@ jobs:
         cp -R ./atak/ATAK/app/src/common/java/* tmp/src
         cp -R ./atak/ATAK/app/src/main/java/* tmp/src
         pushd .
-        cd tmp/src && javadoc -linkoffline http://d.android.com/reference file://$ANDROID_HOME/docs/reference -d ../javadoc -classpath .:$ANDROID_HOME/platforms/android-${ANDROID_COMPILE_SDK}/and[...]
+        cd tmp/src && javadoc -linkoffline http://d.android.com/reference file://$ANDROID_HOME/docs/reference -d ../javadoc -classpath .:$ANDROID_HOME/platforms/android-${ANDROID_COMPILE_SDK}/android.jar
         popd
         pushd .
         cd tmp/javadoc && jar cvf ../../pluginsdk/atak-javadoc.jar .
