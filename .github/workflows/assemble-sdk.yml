@@ -5,7 +5,7 @@ on:
 jobs:
   assemble:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     container:
       image: openjdk:8-jdk
     defaults:
@@ -94,7 +94,7 @@ jobs:
         done
     - name: Create Keystore
       run: |
-        echo y | $JAVA_HOME/bin/keytool -genkeypair -dname "cn=ATAK CIV, ou=, o=, c=US" -alias $KEYSTORE_ALIAS -keypass $KEYSTORE_KEY_PASSWORD -keystore $HOME/secrets/android_keystore -storepass $KEYSTORE_STORE_PASSWORD
+        echo y | $JAVA_HOME/bin/keytool -genkeypair -dname "cn=ATAK CIV, ou=, o=, c=US" -alias $KEYSTORE_ALIAS -keypass $KEYSTORE_KEY_PASSWORD -keystore $HOME/secrets/android_keystore -storepass $[...]
         cd atak
         rm -rf local.properties
         echo "takDebugKeyFile=$HOME/secrets/android_keystore" >> local.properties
@@ -129,7 +129,7 @@ jobs:
         cp -R ./atak/ATAK/app/src/common/java/* tmp/src
         cp -R ./atak/ATAK/app/src/main/java/* tmp/src
         pushd .
-        cd tmp/src && javadoc -linkoffline http://d.android.com/reference file://$ANDROID_HOME/docs/reference -d ../javadoc -classpath .:$ANDROID_HOME/platforms/android-${ANDROID_COMPILE_SDK}/android.jar
+        cd tmp/src && javadoc -linkoffline http://d.android.com/reference file://$ANDROID_HOME/docs/reference -d ../javadoc -classpath .:$ANDROID_HOME/platforms/android-${ANDROID_COMPILE_SDK}/and[...]
         popd
         pushd .
         cd tmp/javadoc && jar cvf ../../pluginsdk/atak-javadoc.jar .
