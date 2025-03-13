@@ -41,8 +41,7 @@ import java.net.URLEncoder;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -52,9 +51,7 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.X509TrustManager;
+
 
 public final class NetworkConnectionImpl {
 
@@ -73,10 +70,7 @@ public final class NetworkConnectionImpl {
         // No public constructor
     }
 
-    public static ConnectionResult execute(Context context, String urlValue, Method method,
-            ArrayList<BasicNameValuePair> parameterList, HashMap<String, String> headerMap,
-            boolean isGzipEnabled, String userAgent, String postText,
-            boolean isSslValidationEnabled) throws ConnectionException {
+
         HttpURLConnection connection = null;
         try {
             if (userAgent == null) {
@@ -174,123 +168,4 @@ public final class NetworkConnectionImpl {
                 }
             }
 
-            connection.setConnectTimeout(OPERATION_TIMEOUT);
-            connection.setReadTimeout(OPERATION_TIMEOUT);
 
-            if ((method == Method.POST || method == Method.PUT) && outputText != null) {
-                OutputStream output = null;
-                try {
-                    output = connection.getOutputStream();
-                    output.write(outputText.getBytes());
-                } finally {
-                    if (output != null) {
-                        try {
-                            output.close();
-                        } catch (IOException e) {
-                            // Already catching the first IOException so nothing to do here.
-                        }
-                    }
-                }
-            }
-
-            String contentEncoding = connection.getHeaderField(HTTP.CONTENT_ENCODING);
-
-            int responseCode = connection.getResponseCode();
-            boolean isGzip = contentEncoding != null && contentEncoding.equalsIgnoreCase("gzip");
-            DataDroidLog.d(TAG, "Response code: " + responseCode);
-
-            if (responseCode == HttpStatus.SC_MOVED_PERMANENTLY) {
-                String redirectionUrl = connection.getHeaderField(LOCATION_HEADER);
-                throw new ConnectionException("New location : " + redirectionUrl, redirectionUrl);
-            }
-
-            InputStream errorStream = connection.getErrorStream();
-            if (errorStream != null) {
-                String error = convertStreamToString(errorStream, isGzip);
-                throw new ConnectionException(error, responseCode);
-            }
-
-            String body = convertStreamToString(connection.getInputStream(), isGzip);
-
-            if (DataDroidLog.canLog(Log.VERBOSE)) {
-                DataDroidLog.v(TAG, "Response body: ");
-                int pos = 0;
-                int bodyLength = body.length();
-                while (pos < bodyLength) {
-                    DataDroidLog.v(TAG, body.substring(pos, Math.min(bodyLength - 1, pos + 200)));
-                    pos = pos + 200;
-                }
-            }
-
-            return new ConnectionResult(connection.getHeaderFields(), body);
-        } catch (IOException e) {
-            DataDroidLog.e(TAG, "IOException", e);
-            throw new ConnectionException(e);
-        } catch (KeyManagementException e) {
-            DataDroidLog.e(TAG, "KeyManagementException", e);
-            throw new ConnectionException(e);
-        } catch (NoSuchAlgorithmException e) {
-            DataDroidLog.e(TAG, "NoSuchAlgorithmException", e);
-            throw new ConnectionException(e);
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
-    }
-
-    private static SSLContext getSslContext(Context context) throws NoSuchAlgorithmException, KeyManagementException {
-        try {
-            KeyStore keyStore = KeyStore.getInstance("PKCS12");
-            InputStream keyStoreStream = context.getResources().openRawResource(R.raw.client); // Load client certificate
-            keyStore.load(keyStoreStream, "password".toCharArray()); // Client certificate password
-
-            KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-            keyManagerFactory.init(keyStore, "password".toCharArray());
-
-            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-            KeyStore trustStore = KeyStore.getInstance("BKS");
-            InputStream trustStoreStream = context.getResources().openRawResource(R.raw.server); // Load CA certificate
-            trustStore.load(trustStoreStream, "password".toCharArray()); // CA certificate password
-            trustManagerFactory.init(trustStore);
-
-            SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), new java.security.SecureRandom());
-            return sslContext;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize SSLContext", e);
-        }
-    }
-
-    private static String convertStreamToString(InputStream is, boolean isGzipEnabled) throws IOException {
-        InputStream cleanedIs = is;
-        if (isGzipEnabled) {
-            cleanedIs = new GZIPInputStream(is);
-        }
-
-        BufferedReader reader = null;
-        try {
-            reader = new BufferedReader(new InputStreamReader(cleanedIs, UTF8_CHARSET));
-            StringBuilder sb = new StringBuilder();
-            for (String line; (line = reader.readLine()) != null;) {
-                sb.append(line);
-                sb.append("\n");
-            }
-
-            return sb.toString();
-        } finally {
-            if (reader != null) {
-                reader.close();
-            }
-
-            cleanedIs.close();
-
-            if (isGzipEnabled) {
-                is.close();
-            }
-        }
-    }
-}
-        }
-    }
-}
