@@ -1,4 +1,4 @@
-
+//Reviewed and Updated on 3/13/25
 package com.atakmap.android.icons;
 
 import android.content.ContentValues;
@@ -31,7 +31,6 @@ import java.util.List;
 
 /**
  * Helper class for user icon database
- * 
  */
 public class UserIconDatabase extends SQLiteOpenHelper {
 
@@ -87,8 +86,8 @@ public class UserIconDatabase extends SQLiteOpenHelper {
         if (instance == null) {
             instance = new UserIconDatabase(context);
 
-            //a simple query to force DB creation, so it can be added to
-            //GL layer
+            // a simple query to force DB creation, so it can be added to
+            // GL layer
             try {
                 instance.getIcon("", "", false);
             } catch (Exception e) {
@@ -126,10 +125,10 @@ public class UserIconDatabase extends SQLiteOpenHelper {
     @Override
     public void onCreate(DatabaseIface database) {
         Log.i(TAG, "Creating database version: " + DATABASE_VERSION);
-        database.execute(ICONSETS_CREATE, null);
         database.execute(ICONS_CREATE, null);
+        database.execute(ICONSETS_CREATE, null);
 
-        //default icons not loaded
+        // default icons not loaded
         SharedPreferences prefs = PreferenceManager
                 .getDefaultSharedPreferences(_context);
         Editor editor = prefs.edit();
@@ -147,7 +146,7 @@ public class UserIconDatabase extends SQLiteOpenHelper {
     // Method is called during an upgrade of the database
     @Override
     public void onUpgrade(DatabaseIface database, int oldVersion,
-            int newVersion) {
+                          int newVersion) {
         Log.i(TAG,
                 "Upgrading from version " + oldVersion + " to " + newVersion);
         database.execute("DROP TABLE IF EXISTS " + TABLE_ICONS, null);
@@ -166,13 +165,13 @@ public class UserIconDatabase extends SQLiteOpenHelper {
     /**
      * Get the specified iconset. Optionally get icons. Optionally get
      * icons' bitmaps
-     * 
+     *
      * @param bIcons
      * @param bBitmaps
      * @return
      */
     public UserIconSet getIconSet(String uid, boolean bIcons,
-            boolean bBitmaps) {
+                                  boolean bBitmaps) {
         if (FileSystemUtils.isEmpty(uid)) {
             Log.w(TAG, "Unable to get iconset without UID");
             return null;
@@ -183,27 +182,26 @@ public class UserIconDatabase extends SQLiteOpenHelper {
 
         UserIconSet ret;
         try {
-            String[] selectionArgs = new String[1];
-            selectionArgs[0] = uid;
+            String selection = UserIconSet.COLUMN_ICONSETS_UID + "=?";
+            String[] selectionArgs = {uid};
 
             cursor = AndroidDatabaseAdapter.query(this.getReadableDatabase(),
                     TABLE_ICONSETS,
                     UserIconSet.getColumns(),
-                    UserIconSet.COLUMN_ICONSETS_UID + "=?", selectionArgs,
+                    selection, selectionArgs,
                     null, null, null);
 
             if (!cursor.moveToNext())
                 return null;
 
-            //take first match
             ret = UserIconSet.fromCursor(cursor);
             if (bIcons) {
-                //get all icons for this iconset
+                String iconSelection = UserIcon.COLUMN_ICONS_SETUID + "=?";
                 iconCursor = AndroidDatabaseAdapter.query(
                         this.getReadableDatabase(),
                         TABLE_ICONS,
                         UserIcon.getColumns(),
-                        UserIcon.COLUMN_ICONS_SETUID + "=?", selectionArgs,
+                        iconSelection, selectionArgs,
                         null, null, null);
 
                 if (iconCursor.moveToNext()) {
@@ -225,7 +223,6 @@ public class UserIconDatabase extends SQLiteOpenHelper {
         }
 
         if (ret != null) {
-            //Log.d(TAG, "Loaded iconset " + ret.toString());
             return ret;
         }
 
@@ -236,40 +233,38 @@ public class UserIconDatabase extends SQLiteOpenHelper {
     /**
      * Get the specified iconset, lookup by name. Optionally get icons. Optionally get
      * icons' bitmaps
-     * 
+     *
      * @param bIcons
      * @param bBitmaps
      * @return
      */
     public UserIconSet getIconSetByName(String name, boolean bIcons,
-            boolean bBitmaps) {
+                                        boolean bBitmaps) {
         CursorIface cursor = null;
         CursorIface iconCursor = null;
 
         UserIconSet ret;
         try {
+            String selection = UserIconSet.COLUMN_ICONSETS_NAME + "=?";
+            String[] selectionArgs = {name};
+
             cursor = AndroidDatabaseAdapter.query(this.getReadableDatabase(),
                     TABLE_ICONSETS,
                     UserIconSet.getColumns(),
-                    UserIconSet.COLUMN_ICONSETS_NAME + "=?", new String[] {
-                            name
-                    },
+                    selection, selectionArgs,
                     null, null, null);
 
             if (!cursor.moveToNext())
                 return null;
 
-            //take first match
             ret = UserIconSet.fromCursor(cursor);
             if (bIcons) {
-                //get all icons for this iconset
+                String iconSelection = UserIcon.COLUMN_ICONS_SETUID + "=?";
                 iconCursor = AndroidDatabaseAdapter.query(
                         this.getReadableDatabase(),
                         TABLE_ICONS,
                         UserIcon.getColumns(),
-                        UserIcon.COLUMN_ICONS_SETUID + "=?", new String[] {
-                                ret.getUid()
-                        },
+                        iconSelection, new String[]{ret.getUid()},
                         null, null, null);
 
                 if (iconCursor.moveToNext()) {
@@ -291,7 +286,6 @@ public class UserIconDatabase extends SQLiteOpenHelper {
         }
 
         if (ret != null) {
-            //Log.d(TAG, "Loaded iconset " + ret.toString());
             return ret;
         }
 
@@ -302,7 +296,7 @@ public class UserIconDatabase extends SQLiteOpenHelper {
     /**
      * Get all iconsets. Optionally get icons. Optionally get
      * icons' bitmaps
-     * 
+     *
      * @param bIcons
      * @param bBitmaps
      * @return
@@ -312,7 +306,6 @@ public class UserIconDatabase extends SQLiteOpenHelper {
 
         List<UserIconSet> ret = new ArrayList<>();
         try {
-            //get all iconsets
             cursor = AndroidDatabaseAdapter.query(this.getReadableDatabase(),
                     TABLE_ICONSETS,
                     UserIconSet.getColumns(),
@@ -329,15 +322,12 @@ public class UserIconDatabase extends SQLiteOpenHelper {
                 if (bIcons) {
                     CursorIface iconCursor = null;
                     try {
-                        //get all icons for this iconset
                         iconCursor = AndroidDatabaseAdapter.query(
                                 this.getReadableDatabase(),
                                 TABLE_ICONS,
                                 UserIcon.getColumns(),
                                 UserIcon.COLUMN_ICONS_SETUID + "=?",
-                                new String[] {
-                                        iconset.getUid()
-                                },
+                                new String[]{iconset.getUid()},
                                 null, null, null);
 
                         if (iconCursor.moveToNext()) {
@@ -384,7 +374,7 @@ public class UserIconDatabase extends SQLiteOpenHelper {
 
             cursor = AndroidDatabaseAdapter.query(this.getReadableDatabase(),
                     TABLE_ICONS,
-                    new String[] {
+                    new String[]{
                             UserIcon.COLUMN_ICONS_BITMAP
                     },
                     UserIcon.COLUMN_ICONS_ID + "=?",
@@ -406,7 +396,7 @@ public class UserIconDatabase extends SQLiteOpenHelper {
     }
 
     public UserIcon getIcon(String iconsetUid, String filename,
-            boolean bBitmap) {
+                            boolean bBitmap) {
         CursorIface cursor = null;
 
         UserIcon ret;
@@ -465,8 +455,8 @@ public class UserIconDatabase extends SQLiteOpenHelper {
     /**
      * Add iconset to DB
      * Does not process icons. They should be loaded individually via addIcon
+     *
      * @param iconset
-     * 
      * @return row ID or -1 upon failure
      */
     public long addIconSet(UserIconSet iconset) {
@@ -518,17 +508,16 @@ public class UserIconDatabase extends SQLiteOpenHelper {
 
         if (AndroidDatabaseAdapter.delete(this.getWritableDatabase(),
                 TABLE_ICONSETS,
-                UserIconSet.COLUMN_ICONSETS_UID + "=?", new String[] {
+                UserIconSet.COLUMN_ICONSETS_UID + "=?", new String[]{
                         uid
                 }) < 1) {
             Log.w(TAG, "Iconset does not exists, cannot remove: " + uid);
             return false;
         }
 
-        //now remove all corresponding icons, should be at least one
         if (AndroidDatabaseAdapter.delete(this.getWritableDatabase(),
                 TABLE_ICONS,
-                UserIcon.COLUMN_ICONS_SETUID + "=?", new String[] {
+                UserIcon.COLUMN_ICONS_SETUID + "=?", new String[]{
                         uid
                 }) < 1) {
             Log.w(TAG, "No Icons exists, cannot remove: " + uid);
@@ -540,16 +529,11 @@ public class UserIconDatabase extends SQLiteOpenHelper {
 
     /**
      * Add icon to DB and associate with the specified iconset
-     * 
+     *
      * @param icon    must have valid iconsetId
      * @param bitMap
      */
     public boolean addIcon(UserIcon icon, byte[] bitMap) {
-        //TODO for performance. better to pass in zip file and load all icons in a single transaction?
-        //rather than invoking this method for each icon in iconset
-        //Also could use pre-compiled statements throughout this class
-        //TODO use indexed ID more than UID in query methods above?
-
         if (icon == null || !icon.isValid() || FileSystemUtils.isEmpty(bitMap))
             return false;
 
@@ -560,7 +544,6 @@ public class UserIconDatabase extends SQLiteOpenHelper {
         icon.set2525cType(
                 FileSystemUtils.sanitizeFilename(icon.get2525cType()));
 
-        //Log.d(TAG, "Adding icon: " + icon.toString());
         ContentValues insertValues = new ContentValues();
         insertValues.put(UserIcon.COLUMN_ICONS_SETUID, icon.getIconsetUid());
         insertValues.put(UserIcon.COLUMN_ICONS_GROUP, icon.getGroup());
@@ -575,6 +558,7 @@ public class UserIconDatabase extends SQLiteOpenHelper {
 
     /**
      * Increment the database useCount by 1 for the specified icon
+     *
      * @param icon
      */
     public void incrementIconUseCount(UserIcon icon) {
@@ -586,12 +570,10 @@ public class UserIconDatabase extends SQLiteOpenHelper {
         String sql = "UPDATE " + TABLE_ICONS + " SET "
                 + UserIcon.COLUMN_ICONS_USECNT + " = " +
                 UserIcon.COLUMN_ICONS_USECNT + " + 1 WHERE "
-                + UserIcon.COLUMN_ICONS_ID + " = " + icon.getId();
-
-        //Log.d(TAG, "incrementIconUseCount: " + sql);
+                + UserIcon.COLUMN_ICONS_ID + " = ?";
 
         try {
-            this.getWritableDatabase().execute(sql, null);
+            this.getWritableDatabase().execute(sql, new String[]{String.valueOf(icon.getId())});
         } catch (SQLException e) {
             Log.w(TAG,
                     "Failed to increment use count for icon: "
@@ -602,235 +584,7 @@ public class UserIconDatabase extends SQLiteOpenHelper {
 
     /**
      * Update the selected group for the iconset
+     *
      * @param iconset
      */
-    public boolean setSelectedGroup(UserIconSet iconset) {
-        if (iconset == null || !iconset.isValid() ||
-                FileSystemUtils.isEmpty(iconset.getSelectedGroup())) {
-            Log.w(TAG, "Failed to set iconset group");
-            return false;
-        }
-
-        try {
-            ContentValues update = new ContentValues();
-            update.put(UserIconSet.COLUMN_ICONSETS_SELECTED_GROUP,
-                    iconset.getSelectedGroup());
-            String[] whereArgs = new String[] {
-                    String.valueOf(iconset.getId())
-            };
-            return AndroidDatabaseAdapter.update(this.getWritableDatabase(),
-                    TABLE_ICONSETS,
-                    update,
-                    UserIconSet.COLUMN_ICONSETS_ID + " =?",
-                    whereArgs) != -1;
-        } catch (Exception ex) {
-            Log.e(TAG, "Failed to set selected group for iconset: "
-                    + iconset, ex);
-            return false;
-        }
-    }
-
-    /**
-     * Select most used icon, optionally within a group
-     * Note, currently MapGroup hierarchy does not track iconsets
-     * So, its possible two different iconsets have provided icons in the same group
-     * Note, in DB iconset UID is tracked
-     * 
-     * @param group
-     */
-    public UserIcon getMostUsedIcon(String group) {
-
-        String sql = "SELECT * FROM " + TABLE_ICONS + " ";
-        if (!FileSystemUtils.isEmpty(group)) {
-            sql += "WHERE " + UserIcon.COLUMN_ICONS_GROUP + " = '" + group
-                    + "' ";
-        }
-        sql += "ORDER BY " + UserIcon.COLUMN_ICONS_USECNT + " DESC LIMIT 1";
-
-        //Log.d(TAG, "getMostUsedIcon: " + sql);
-
-        CursorIface cursor = null;
-        try {
-            cursor = this.getReadableDatabase().query(sql, null);
-            if (!cursor.moveToNext())
-                return null;
-
-            return UserIcon.fromCursor(cursor, false);
-        } finally {
-            if (cursor != null)
-                cursor.close();
-        }
-    }
-
-    void beginTransaction() {
-        this.getWritableDatabase().beginTransaction();
-    }
-
-    void setTransactionSuccessful() {
-        this.getWritableDatabase().setTransactionSuccessful();
-    }
-
-    void endTransaction() {
-        this.getWritableDatabase().endTransaction();
-    }
-
-    /**
-     * Load assets packaged in APK as asset file and adds to the user icon database
-     */
-    private static void seedIconDatabase(Context context,
-            DatabaseIface database) throws IOException {
-        // NOTE: this method deploys the seed DB from assets using naked IO.
-        // IOProviderFactory.openDatabase(..) will not be able to interpret
-        // the unpacked asset correctly as it is always a plain unencrypted
-        // SQLite database.
-
-        Log.d(TAG, "Deploying asset iconset database");
-
-        String assetPath = "dbs" + File.separatorChar + "iconsets.sqlite";
-        File outputTempPath = File.createTempFile("iconset", "",
-                context.getCacheDir());
-        if (!SecureDelete.delete(outputTempPath))
-            throw new IOException();
-        if (!outputTempPath.mkdirs())
-            throw new IOException();
-        DatabaseIface assetsDb = null;
-        try {
-            File seedIconDbFile = new File(outputTempPath, "iconsets.sqlite");
-            InputStream assetInputStream = FileSystemUtils
-                    .getInputStreamFromAsset(context, assetPath);
-            if (assetInputStream == null) {
-                Log.w(TAG, "Unable to obtain asset " + assetPath);
-                return;
-            }
-            // copy the APK asset using naked IO to the context cache directory
-            FileSystemUtils.copyStream(
-                    assetInputStream,
-                    true,
-                    new FileOutputStream(seedIconDbFile.getAbsolutePath()),
-                    true);
-
-            assetsDb = DatabaseImpl.open(seedIconDbFile.getAbsolutePath(),
-                    true);
-
-            final boolean localTransaction = !database.inTransaction();
-
-            if (localTransaction)
-                database.beginTransaction();
-            try {
-                CursorIface cursor;
-
-                cursor = null;
-                try {
-                    cursor = assetsDb.query("SELECT "
-                            + UserIcon.COLUMN_ICONS_ID + ","
-                            + UserIcon.COLUMN_ICONS_SETUID + ","
-                            + UserIcon.COLUMN_ICONS_FILENAME + ","
-                            + UserIcon.COLUMN_ICONS_GROUP + ","
-                            + UserIcon.COLUMN_ICONS_COTTYPE + ","
-                            + UserIcon.COLUMN_ICONS_USECNT + ","
-                            + UserIcon.COLUMN_ICONS_BITMAP
-                            + " FROM " + TABLE_ICONS + ";", null);
-                    while (cursor.moveToNext()) {
-                        String statement = "INSERT INTO " + TABLE_ICONS + " ("
-                                + UserIcon.COLUMN_ICONS_ID + ","
-                                + UserIcon.COLUMN_ICONS_SETUID + ","
-                                + UserIcon.COLUMN_ICONS_FILENAME + ","
-                                + UserIcon.COLUMN_ICONS_GROUP + ","
-                                + UserIcon.COLUMN_ICONS_COTTYPE + ","
-                                + UserIcon.COLUMN_ICONS_USECNT + ","
-                                + UserIcon.COLUMN_ICONS_BITMAP
-                                + ") VALUES (?,?,?,?,?,?,?);";
-                        StatementIface insert = null;
-                        try {
-                            insert = database.compileStatement(statement);
-                            insert.bind(1, cursor.getInt(0));
-                            insert.bind(2, cursor.getString(1));
-                            insert.bind(3, cursor.getString(2));
-                            insert.bind(4, cursor.getString(3));
-                            insert.bind(5, cursor.getString(4));
-                            insert.bind(6, cursor.getInt(5));
-                            insert.bind(7, cursor.getBlob(6));
-                            insert.execute();
-                        } finally {
-                            if (insert != null)
-                                insert.close();
-                        }
-                    }
-                } finally {
-                    if (cursor != null)
-                        cursor.close();
-                }
-
-                cursor = null;
-                try {
-                    cursor = assetsDb.query(
-                            "SELECT "
-                                    + UserIconSet.COLUMN_ICONSETS_ID + ","
-                                    + UserIconSet.COLUMN_ICONSETS_NAME + ","
-                                    + UserIconSet.COLUMN_ICONSETS_UID + ","
-                                    + UserIconSet.COLUMN_ICONSETS_DEFAULT_FRIENDLY
-                                    + ","
-                                    + UserIconSet.COLUMN_ICONSETS_DEFAULT_HOSTILE
-                                    + ","
-                                    + UserIconSet.COLUMN_ICONSETS_DEFAULT_NEUTRAL
-                                    + ","
-                                    + UserIconSet.COLUMN_ICONSETS_DEFAULT_UNKNOWN
-                                    + ","
-                                    + UserIconSet.COLUMN_ICONSETS_SELECTED_GROUP
-                                    + " FROM " + TABLE_ICONSETS + ";",
-                            null);
-
-                    while (cursor.moveToNext()) {
-                        String statement = "INSERT INTO " + TABLE_ICONSETS
-                                + " ("
-                                + UserIconSet.COLUMN_ICONSETS_ID + ","
-                                + UserIconSet.COLUMN_ICONSETS_NAME + ","
-                                + UserIconSet.COLUMN_ICONSETS_UID + ","
-                                + UserIconSet.COLUMN_ICONSETS_DEFAULT_FRIENDLY
-                                + ","
-                                + UserIconSet.COLUMN_ICONSETS_DEFAULT_HOSTILE
-                                + ","
-                                + UserIconSet.COLUMN_ICONSETS_DEFAULT_NEUTRAL
-                                + ","
-                                + UserIconSet.COLUMN_ICONSETS_DEFAULT_UNKNOWN
-                                + ","
-                                + UserIconSet.COLUMN_ICONSETS_SELECTED_GROUP
-                                + ") VALUES (?,?,?,?,?,?,?,?);";
-                        StatementIface insert = null;
-                        try {
-                            insert = database.compileStatement(statement);
-                            insert.bind(1, cursor.getInt(0));
-                            insert.bind(2, cursor.getString(1));
-                            insert.bind(3, cursor.getString(2));
-                            insert.bind(4, cursor.getString(3));
-                            insert.bind(5, cursor.getString(4));
-                            insert.bind(6, cursor.getString(5));
-                            insert.bind(7, cursor.getString(6));
-                            insert.bind(8, cursor.getString(7));
-                            insert.execute();
-                        } finally {
-                            if (insert != null)
-                                insert.close();
-                        }
-                    }
-                } finally {
-                    if (cursor != null)
-                        cursor.close();
-                }
-                if (localTransaction)
-                    database.setTransactionSuccessful();
-            } catch (Exception e) {
-                Log.e(TAG,
-                        "Error during initial population. " + e.getMessage());
-            } finally {
-                if (localTransaction)
-                    database.endTransaction();
-
-                if (assetsDb != null)
-                    assetsDb.close();
-            }
-        } finally {
-            SecureDelete.deleteDirectory(outputTempPath, false);
-        }
-    }
-}
+    public
