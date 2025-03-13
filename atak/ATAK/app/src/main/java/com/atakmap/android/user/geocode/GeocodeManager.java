@@ -1,4 +1,4 @@
-
+//Reviewed and Updated on 3/13/25
 package com.atakmap.android.user.geocode;
 
 import android.content.Context;
@@ -28,6 +28,8 @@ import com.atakmap.coremap.xml.XMLUtils;
 import java.io.File;
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.List;
 
@@ -257,28 +259,31 @@ public class GeocodeManager {
         public boolean testServiceAvailable() {
             try {
                 Log.d(TAG, "Testing connection to server: " + url);
-                HttpURLConnection connection = (HttpURLConnection) new URL(
-                        url)
-                                .openConnection();
+                URI uri = new URI(url);
+
+                if (!"https".equals(uri.getScheme())) {
+                    throw new URISyntaxException(url, "Invalid URL scheme");
+                }
+
+                HttpURLConnection connection = (HttpURLConnection) uri.toURL().openConnection();
                 connection.setRequestProperty("User-Agent", "TAK");
                 connection.setConnectTimeout(10000);
                 connection.setReadTimeout(10000);
                 connection.connect();
                 return true;
-            } catch (IOException e) {
+            } catch (IOException | URISyntaxException e) {
+                Log.w(TAG, "Error testing connection to server: " + url, e);
                 return false;
             }
-
         }
 
         @Override
         public List<Address> getLocation(GeoPoint gp) {
             String geoService = url;
-            String geoServiceKey = key;
+            String geoServiceKey = System.getenv("GEOSERVICE_KEY");
             String userAgent = "ATAK";
 
-            GeocoderNominatim geocoder = new GeocoderNominatim(context,
-                    userAgent);
+            GeocoderNominatim geocoder = new GeocoderNominatim(context, userAgent);
 
             geocoder.setService(geoService);
             geocoder.setServiceKey(geoServiceKey);
@@ -297,11 +302,10 @@ public class GeocodeManager {
         public List<Address> getLocation(final String address,
                 final GeoBounds bounds) {
             String geoService = url;
-            String geoServiceKey = key;
+            String geoServiceKey = System.getenv("GEOSERVICE_KEY");
             String userAgent = "ATAK";
 
-            GeocoderNominatim geocoder = new GeocoderNominatim(context,
-                    userAgent);
+            GeocoderNominatim geocoder = new GeocoderNominatim(context, userAgent);
 
             geocoder.setService(geoService);
             geocoder.setServiceKey(geoServiceKey);
@@ -313,8 +317,7 @@ public class GeocodeManager {
                         bounds.getSouth(), bounds.getWest(), bounds.getNorth(),
                         bounds.getEast());
             } catch (Exception e) {
-                Log.w(TAG, "getFromLocationNameFallback error: " + geoService,
-                        e);
+                Log.w(TAG, "getFromLocationNameFallback error: " + geoService, e);
                 return null;
             }
         }
